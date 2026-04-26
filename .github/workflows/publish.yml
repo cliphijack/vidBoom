@@ -1,0 +1,102 @@
+name: Publish Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'Unique job ID'
+        required: true
+      drive_file_id:
+        required: true
+      title:
+        required: true
+      description:
+        required: false
+        default: ''
+      hashtags:
+        description: 'comma-separated tags'
+        required: false
+        default: ''
+      first_comment:
+        required: false
+        default: ''
+      platforms:
+        description: 'comma-separated: youtube,instagram,threads,tiktok'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run publish job
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          DRIVE_FILE_ID: ${{ inputs.drive_file_id }}
+          TITLE: ${{ inputs.title }}
+          DESCRIPTION: ${{ inputs.description }}
+          HASHTAGS: ${{ inputs.hashtags }}
+          FIRST_COMMENT: ${{ inputs.first_comment }}
+          PLATFORMS: ${{ inputs.platforms }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}
+          INSTAGRAM_PASSWORD: ${{ secrets.INSTAGRAM_PASSWORD }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+        run: python backend/publish_job.py
+
+      - name: Save results to results branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          RESULT_FILE="/tmp/vidboom_result.json"
+          if [ ! -f "$RESULT_FILE" ]; then
+            echo '{"job_id":"'"$JOB_ID"'","results":[],"error":"job failed before producing results"}' > "$RESULT_FILE"
+          fi
+
+          # Create results branch if it doesn't exist
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/results")
+          if [ "$HTTP" = "404" ]; then
+            SHA=$(curl -s \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/master" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin)['object']['sha'])")
+            curl -s -X POST \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs" \
+              -d '{"ref":"refs/heads/results","sha":"'"$SHA"'"}'
+          fi
+
+          CONTENT=$(base64 -w 0 "$RESULT_FILE")
+          curl -s -X PUT \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/${JOB_ID}.json" \
+            -d '{"message":"result: '"$JOB_ID"'","content":"'"$CONTENT"'","branch":"results"}'
