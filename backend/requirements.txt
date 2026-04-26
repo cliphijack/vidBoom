@@ -10,4 +10,4 @@ google-auth-oauthlib==1.2.1
 instagrapi==2.4.4
 requests>=2.32.3
 aiofiles==24.1.0
-pydantic==2.9.2
+pydantic>=2.9.2
