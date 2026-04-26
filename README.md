@@ -23,7 +23,7 @@ Google Drive에 세로형 영상을 올리면, 버튼 하나로 **YouTube Shorts
 ## 빠른 시작
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/vidBoom.git
+git clone https://github.com/cliphijack/vidBoom.git
 cd vidBoom
 cp backend/.env.example backend/.env
 # backend/.env 열어서 API 키 채우기
