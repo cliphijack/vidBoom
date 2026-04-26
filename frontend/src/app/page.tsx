@@ -2,8 +2,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 interface DriveVideo {
   id: string;
   name: string;
@@ -19,10 +17,13 @@ export default function Home() {
 
   const fetchVideos = () => {
     setLoading(true);
-    fetch(`${API}/drive/videos`)
+    fetch("/api/drive")
       .then((r) => r.json())
-      .then(setVideos)
-      .catch(() => setError("Google Drive 연결 실패. .env 설정을 확인하세요."))
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setVideos(data);
+      })
+      .catch((e) => setError(e.message || "Google Drive 연결 실패. 환경변수를 확인하세요."))
       .finally(() => setLoading(false));
   };
 
