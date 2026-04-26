@@ -7,7 +7,6 @@ YouTube 리프레시 토큰 발급 스크립트
   python get_youtube_token.py
 """
 from google_auth_oauthlib.flow import InstalledAppFlow
-import json, os
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
@@ -28,7 +27,18 @@ client_config = {
 }
 
 flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-creds = flow.run_local_server(port=8085)
+
+# 브라우저 없이 URL만 출력 → 브라우저에서 열고 코드 복붙
+flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+auth_url, _ = flow.authorization_url(prompt="consent")
+
+print("\n아래 URL을 브라우저에서 열어주세요:")
+print(auth_url)
+print()
+
+code = input("브라우저에서 받은 코드 붙여넣기: ").strip()
+flow.fetch_token(code=code)
+creds = flow.credentials
 
 print("\n=== GitHub Secret에 추가하세요 ===")
 print(f"YOUTUBE_CLIENT_ID     = {CLIENT_ID}")
