@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.env
+token.json
+yt_token.json
+ig_session.json
+credentials.json
+yt_credentials.json
+
+# Node
+node_modules/
+.next/
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp videos
+*.mp4
+/tmp/
