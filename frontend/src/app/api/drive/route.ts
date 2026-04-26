@@ -3,26 +3,17 @@ import { google } from "googleapis";
 
 const SCOPES = ["https://www.googleapis.com/auth/drive.readonly"];
 
-function getAuth() {
-  const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (credentials) {
-    const key = JSON.parse(credentials);
-    return new google.auth.GoogleAuth({ credentials: key, scopes: SCOPES });
-  }
-  // OAuth2 with refresh token
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
-  );
-  oauth2.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2;
-}
-
 export async function GET() {
   try {
-    const auth = getAuth();
-    const drive = google.drive({ version: "v3", auth: auth as never });
+    const credJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+    if (!credJson) return NextResponse.json({ error: "GOOGLE_SERVICE_ACCOUNT_JSON 환경변수가 없습니다" }, { status: 500 });
+    if (!folderId) return NextResponse.json({ error: "GOOGLE_DRIVE_FOLDER_ID 환경변수가 없습니다" }, { status: 500 });
+
+    const credentials = JSON.parse(credJson);
+    const auth = new google.auth.GoogleAuth({ credentials, scopes: SCOPES });
+    const drive = google.drive({ version: "v3", auth });
 
     const res = await drive.files.list({
       q: `'${folderId}' in parents and mimeType contains 'video/' and trashed = false`,
