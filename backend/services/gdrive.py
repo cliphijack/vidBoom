@@ -1,31 +1,23 @@
 import os
+import json
 import tempfile
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-import io
 
-SCOPES = [
-    "https://www.googleapis.com/auth/drive.readonly",
-]
+SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 
 
 def _get_service():
-    creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-        creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as f:
-            f.write(creds.to_json())
-    return build("drive", "v3", credentials=creds)
+    cred_json = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    credentials = service_account.Credentials.from_service_account_info(
+        json.loads(cred_json), scopes=SCOPES
+    )
+    return build("drive", "v3", credentials=credentials)
 
 
 def list_videos() -> list[dict]:
-    """Drive 폴더에서 세로형 영상 목록 반환"""
     service = _get_service()
     query = f"'{FOLDER_ID}' in parents and mimeType contains 'video/' and trashed=false"
     results = service.files().list(
@@ -38,7 +30,6 @@ def list_videos() -> list[dict]:
 
 
 def download_video(file_id: str) -> str:
-    """Drive 영상을 임시 파일로 다운로드 후 경로 반환"""
     service = _get_service()
     request = service.files().get_media(fileId=file_id)
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
